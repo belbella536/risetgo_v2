@@ -52,13 +52,22 @@ class AuthController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        $user = User::where('username', $validated['login'])->first();
+        // Cari user berdasarkan email ATAU username
+        $user = User::where(function($query) use ($validated) {
+            $query->where('email', $validated['login'])
+                ->orWhere('username', $validated['login']);
+        })->first();
 
+        // Verifikasi keberadaan user dan kecocokan password
         if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return back()->withErrors(['login' => 'Username atau password salah.']);
+            return back()->withErrors(['login' => 'Kredensial yang Anda masukkan salah.']);
         }
 
+        // Login user
         auth()->login($user);
+
+        // Regenerasi session untuk keamanan (mencegah session fixation)
+        $request->session()->regenerate();
 
         return redirect()->route('dashboard');
     }
